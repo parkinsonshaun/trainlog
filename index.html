@@ -1,0 +1,1389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TrainLog">
+<meta name="theme-color" content="#0ea5e9">
+<link rel="manifest" href="./manifest.json">
+<title>Shaun's Training Log</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --sky: #0ea5e9; --sky-dark: #0284c7; --sky-light: #e0f2fe;
+  --slate-50: #f8fafc; --slate-100: #f1f5f9; --slate-200: #e2e8f0;
+  --slate-300: #cbd5e1; --slate-400: #94a3b8; --slate-500: #64748b;
+  --slate-600: #475569; --slate-700: #334155; --slate-800: #1e293b;
+  --slate-900: #0f172a;
+  --green: #22c55e; --green-light: #dcfce7;
+  --amber: #f59e0b; --amber-light: #fef3c7;
+  --red: #ef4444; --red-light: #fee2e2;
+  --purple: #8b5cf6; --purple-light: #ede9fe;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--slate-50); color: var(--slate-800);
+  -webkit-font-smoothing: antialiased;
+}
+#root { height: 100%; display: flex; flex-direction: column; }
+input, select, textarea {
+  font-family: inherit; font-size: 16px;
+  border: 1.5px solid var(--slate-300); border-radius: 10px;
+  padding: 10px 12px; background: white; color: var(--slate-800);
+  width: 100%; outline: none; transition: border-color 0.15s;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--sky); }
+input[type="number"] { -moz-appearance: textfield; }
+input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; }
+button { font-family: inherit; cursor: pointer; border: none; outline: none; -webkit-tap-highlight-color: transparent; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 12px 20px; border-radius: 12px; font-size: 15px; font-weight: 600;
+  transition: transform 0.1s, opacity 0.15s;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--sky); color: white; }
+.btn-primary:hover { background: var(--sky-dark); }
+.btn-secondary { background: var(--slate-200); color: var(--slate-700); }
+.btn-danger { background: var(--red); color: white; }
+.btn-sm { padding: 8px 14px; font-size: 13px; border-radius: 8px; }
+.btn-full { width: 100%; }
+
+/* Layout */
+.app-header {
+  padding: calc(var(--safe-top) + 8px) 16px 10px;
+  background: var(--slate-900); color: white; text-align: center;
+  font-size: 17px; font-weight: 700; letter-spacing: -0.3px;
+  flex-shrink: 0;
+}
+.app-content {
+  flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  padding: 16px 16px calc(70px + var(--safe-bottom));
+}
+.tab-bar {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  display: flex; background: white;
+  border-top: 1px solid var(--slate-200);
+  padding: 6px 0 calc(6px + var(--safe-bottom));
+  z-index: 100;
+}
+.tab-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  gap: 2px; padding: 6px 0; background: none; color: var(--slate-400);
+  font-size: 10px; font-weight: 600; letter-spacing: 0.3px;
+  transition: color 0.15s;
+}
+.tab-btn.active { color: var(--sky); }
+.tab-btn svg { width: 24px; height: 24px; }
+
+/* Cards */
+.card {
+  background: white; border-radius: 14px; padding: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  margin-bottom: 12px;
+}
+.card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.card-title { font-size: 16px; font-weight: 700; }
+.badge {
+  display: inline-flex; align-items: center; padding: 3px 10px;
+  border-radius: 20px; font-size: 12px; font-weight: 600;
+}
+.badge-lifting { background: var(--purple-light); color: var(--purple); }
+.badge-intervals { background: var(--red-light); color: var(--red); }
+.badge-zone2 { background: var(--green-light); color: var(--green); }
+
+/* Form layout */
+.form-group { margin-bottom: 14px; }
+.form-label { display: block; font-size: 13px; font-weight: 600; color: var(--slate-500); margin-bottom: 5px; }
+.form-row { display: flex; gap: 10px; }
+.form-row > * { flex: 1; }
+.form-hint { font-size: 11px; color: var(--slate-400); margin-top: 3px; }
+
+/* Set rows for lifting */
+.set-row {
+  display: flex; align-items: center; gap: 8px; padding: 8px 0;
+  border-bottom: 1px solid var(--slate-100);
+}
+.set-num { font-size: 13px; font-weight: 700; color: var(--slate-400); width: 24px; text-align: center; }
+.set-row input { padding: 8px; font-size: 14px; }
+
+/* Interval rows */
+.interval-row {
+  display: flex; align-items: center; gap: 6px; padding: 8px 0;
+  border-bottom: 1px solid var(--slate-100); font-size: 14px;
+}
+.interval-num {
+  width: 26px; height: 26px; border-radius: 50%; display: flex;
+  align-items: center; justify-content: center; font-weight: 700;
+  font-size: 12px; background: var(--red-light); color: var(--red); flex-shrink: 0;
+}
+.interval-row input { padding: 7px; font-size: 13px; }
+
+/* Calendar */
+.cal-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 8px; }
+.cal-day-label { text-align: center; font-size: 11px; font-weight: 700; color: var(--slate-400); padding: 4px 0; }
+.cal-day {
+  text-align: center; padding: 8px 2px; border-radius: 10px; min-height: 72px;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  background: white; border: 1.5px solid var(--slate-100); transition: all 0.15s;
+  cursor: pointer; font-size: 14px; font-weight: 600;
+}
+.cal-day.today { border-color: var(--sky); background: var(--sky-light); }
+.cal-day .cal-date { font-size: 13px; }
+.cal-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+}
+.cal-dot.planned { opacity: 0.3; }
+.cal-dot.completed { opacity: 1; }
+.cal-dot.lifting { background: var(--purple); }
+.cal-dot.intervals { background: var(--red); }
+.cal-dot.zone2 { background: var(--green); }
+.cal-dot.rest { background: var(--slate-300); }
+
+.cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.cal-nav-title { font-size: 16px; font-weight: 700; }
+.cal-nav button { background: var(--slate-100); border-radius: 8px; padding: 8px 12px; font-weight: 600; font-size: 14px; color: var(--slate-600); }
+
+/* Week summary */
+.week-summary { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.week-summary-item {
+  flex: 1; min-width: 80px; text-align: center; padding: 10px 6px;
+  border-radius: 10px; background: var(--slate-100);
+}
+.week-summary-item .count { font-size: 20px; font-weight: 800; }
+.week-summary-item .label { font-size: 10px; font-weight: 600; color: var(--slate-500); margin-top: 2px; }
+.week-summary-item.done { background: var(--green-light); }
+
+/* Chart container */
+.chart-container { position: relative; height: 220px; margin: 8px 0; }
+
+/* History */
+.history-item {
+  display: flex; align-items: center; gap: 12px; padding: 12px 0;
+  border-bottom: 1px solid var(--slate-100); cursor: pointer;
+}
+.history-icon {
+  width: 40px; height: 40px; border-radius: 10px; display: flex;
+  align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
+}
+.history-icon.lifting { background: var(--purple-light); }
+.history-icon.intervals { background: var(--red-light); }
+.history-icon.zone2 { background: var(--green-light); }
+.history-info { flex: 1; }
+.history-title { font-size: 14px; font-weight: 600; }
+.history-sub { font-size: 12px; color: var(--slate-500); margin-top: 2px; }
+.history-date { font-size: 12px; color: var(--slate-400); font-weight: 600; flex-shrink: 0; }
+
+/* Overlay / Modal */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200;
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.modal-sheet {
+  background: var(--slate-50); border-radius: 20px 20px 0 0; width: 100%;
+  max-height: 90vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  padding: 20px 16px calc(20px + var(--safe-bottom));
+  animation: slideUp 0.25s ease-out;
+}
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.modal-handle {
+  width: 36px; height: 4px; border-radius: 2px; background: var(--slate-300);
+  margin: 0 auto 16px;
+}
+
+/* Exercise block in lifting form */
+.exercise-block {
+  background: var(--slate-50); border-radius: 10px; padding: 12px;
+  margin-bottom: 12px; border: 1px solid var(--slate-200);
+}
+.exercise-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.exercise-name-input { font-size: 15px; font-weight: 600; border: none; background: none; padding: 0; }
+.exercise-name-input:focus { border: none; }
+
+/* Delete button */
+.del-btn {
+  width: 28px; height: 28px; border-radius: 50%; background: var(--slate-200);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; color: var(--slate-500); transition: all 0.15s;
+}
+.del-btn:hover { background: var(--red-light); color: var(--red); }
+
+/* Session detail view */
+.detail-section { margin-bottom: 16px; }
+.detail-label { font-size: 12px; font-weight: 600; color: var(--slate-400); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.detail-value { font-size: 20px; font-weight: 700; }
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* Quick entry cards on log screen */
+.log-card {
+  padding: 20px; border-radius: 14px; display: flex; align-items: center; gap: 14px;
+  margin-bottom: 10px; cursor: pointer; transition: transform 0.1s; border: none; width: 100%;
+  text-align: left;
+}
+.log-card:active { transform: scale(0.98); }
+.log-card-icon {
+  width: 48px; height: 48px; border-radius: 12px; display: flex;
+  align-items: center; justify-content: center; font-size: 22px;
+}
+.log-card-text .log-card-title { font-size: 16px; font-weight: 700; color: var(--slate-800); }
+.log-card-text .log-card-sub { font-size: 13px; color: var(--slate-500); margin-top: 2px; }
+.log-card.lifting { background: var(--purple-light); }
+.log-card.lifting .log-card-icon { background: var(--purple); color: white; }
+.log-card.intervals { background: var(--red-light); }
+.log-card.intervals .log-card-icon { background: var(--red); color: white; }
+.log-card.zone2 { background: var(--green-light); }
+.log-card.zone2 .log-card-icon { background: var(--green); color: white; }
+
+/* Empty state */
+.empty { text-align: center; padding: 40px 20px; color: var(--slate-400); }
+.empty-icon { font-size: 40px; margin-bottom: 12px; }
+.empty-text { font-size: 14px; }
+
+/* Confirm delete */
+.confirm-bar { display: flex; gap: 8px; margin-top: 12px; }
+
+/* Toast */
+.toast {
+  position: fixed; top: calc(var(--safe-top) + 60px); left: 50%; transform: translateX(-50%);
+  background: var(--slate-800); color: white; padding: 10px 20px; border-radius: 10px;
+  font-size: 14px; font-weight: 600; z-index: 300; animation: fadeInOut 2s ease-in-out;
+  pointer-events: none;
+}
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+  15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  85% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Scrollbar styling */
+.app-content::-webkit-scrollbar { width: 0; }
+
+/* Trend selector */
+.trend-tabs { display: flex; gap: 6px; margin-bottom: 16px; overflow-x: auto; }
+.trend-tab {
+  padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600;
+  white-space: nowrap; background: var(--slate-100); color: var(--slate-600);
+  border: none;
+}
+.trend-tab.active { background: var(--sky); color: white; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+// ─── Storage helpers ───────────────────────────────────────
+const STORAGE_KEY = 'trainlog_sessions';
+const loadSessions = () => {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+  catch { return []; }
+};
+const saveSessions = (s) => localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+const genId = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+
+// ─── Date helpers ──────────────────────────────────────────
+const fmt = (d) => {
+  const dt = new Date(d + 'T12:00:00');
+  return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+const fmtFull = (d) => {
+  const dt = new Date(d + 'T12:00:00');
+  return dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+};
+const toDateStr = (d) => {
+  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+};
+const today = () => toDateStr(new Date());
+const getMonday = (d) => {
+  const dt = new Date(d + 'T12:00:00');
+  const day = dt.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  dt.setDate(dt.getDate() + diff);
+  return toDateStr(dt);
+};
+const addDays = (d, n) => {
+  const dt = new Date(d + 'T12:00:00');
+  dt.setDate(dt.getDate() + n);
+  return toDateStr(dt);
+};
+const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+// Planned weekly template: Mon=LiftA, Tue=Z2, Wed=Intervals, Thu=LiftB, Fri=Z2, Sat=Z2, Sun=Rest
+const PLAN = ['lifting','zone2','intervals','lifting','zone2','zone2','rest'];
+const PLAN_LABELS = ['Lift A','Zone 2','Intervals','Lift B','Zone 2','Zone 2','Rest'];
+
+// ─── Icons (inline SVG) ───────────────────────────────────
+const IconDumbbell = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6.5 6.5h11M6.5 17.5h11M3 10v4M21 10v4M5 8v8M19 8v8M7 6v12M17 6v12"/></svg>;
+const IconBolt = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>;
+const IconHeart = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>;
+const IconCalendar = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>;
+const IconChart = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>;
+const IconList = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>;
+const IconPlus = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
+const IconX = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
+const IconChevL = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>;
+const IconChevR = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>;
+const IconTrash = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1.5 14a2 2 0 01-2 2h-7a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>;
+
+// ─── Common exercise list for autocomplete ─────────────────
+const COMMON_EXERCISES = [
+  'Bench Press','Incline Bench Press','Dumbbell Bench Press',
+  'Lat Pulldowns','Pull-ups','Barbell Rows','Dumbbell Rows','Cable Rows',
+  'Overhead Press','Dumbbell Shoulder Press','Lateral Raises',
+  'Squats','Leg Press','Leg Extensions','Leg Curls','Romanian Deadlift',
+  'Deadlift','Lunges','Split Squats','Step-ups',
+  'Bicep Curls','Hammer Curls','Tricep Pushdowns','Skull Crushers',
+  'Farmer Carries','Face Pulls','Calf Raises',
+  'Glute Bridges','Hip Thrusts','Clamshells','Fire Hydrants'
+];
+
+// ─── Toast Component ──────────────────────────────────────
+function Toast({ message }) {
+  if (!message) return null;
+  return <div className="toast">{message}</div>;
+}
+
+// ─── Tab Bar ──────────────────────────────────────────────
+function TabBar({ tab, setTab }) {
+  const tabs = [
+    { id: 'log', label: 'LOG', icon: <IconPlus/> },
+    { id: 'calendar', label: 'WEEK', icon: <IconCalendar/> },
+    { id: 'trends', label: 'TRENDS', icon: <IconChart/> },
+    { id: 'history', label: 'HISTORY', icon: <IconList/> },
+  ];
+  return (
+    <div className="tab-bar">
+      {tabs.map(t => (
+        <button key={t.id} className={`tab-btn ${tab === t.id ? 'active' : ''}`} onClick={() => setTab(t.id)}>
+          {t.icon}
+          <span>{t.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ─── Lifting Form ─────────────────────────────────────────
+function LiftingForm({ session, onSave, onCancel }) {
+  const [date, setDate] = useState(session?.date || today());
+  const [sessionName, setSessionName] = useState(session?.sessionName || 'Session A');
+  const [exercises, setExercises] = useState(session?.exercises || [
+    { name: 'Bench Press', sets: [{ weight: '', reps: '', rpe: '' }] }
+  ]);
+
+  const updateExercise = (ei, field, val) => {
+    const next = [...exercises];
+    next[ei] = { ...next[ei], [field]: val };
+    setExercises(next);
+  };
+  const updateSet = (ei, si, field, val) => {
+    const next = [...exercises];
+    next[ei] = { ...next[ei], sets: [...next[ei].sets] };
+    next[ei].sets[si] = { ...next[ei].sets[si], [field]: val };
+    setExercises(next);
+  };
+  const addSet = (ei) => {
+    const next = [...exercises];
+    const lastSet = next[ei].sets[next[ei].sets.length - 1];
+    next[ei] = { ...next[ei], sets: [...next[ei].sets, { weight: lastSet?.weight || '', reps: lastSet?.reps || '', rpe: lastSet?.rpe || '' }] };
+    setExercises(next);
+  };
+  const removeSet = (ei, si) => {
+    const next = [...exercises];
+    next[ei] = { ...next[ei], sets: next[ei].sets.filter((_, i) => i !== si) };
+    if (next[ei].sets.length === 0) next[ei].sets = [{ weight: '', reps: '', rpe: '' }];
+    setExercises(next);
+  };
+  const addExercise = () => {
+    setExercises([...exercises, { name: '', sets: [{ weight: '', reps: '', rpe: '' }] }]);
+  };
+  const removeExercise = (ei) => {
+    if (exercises.length === 1) return;
+    setExercises(exercises.filter((_, i) => i !== ei));
+  };
+
+  const handleSave = () => {
+    const clean = exercises.map(ex => ({
+      name: ex.name.trim() || 'Unnamed',
+      sets: ex.sets.filter(s => s.weight || s.reps).map(s => ({
+        weight: Number(s.weight) || 0,
+        reps: Number(s.reps) || 0,
+        rpe: Number(s.rpe) || 0
+      }))
+    })).filter(ex => ex.sets.length > 0);
+    if (clean.length === 0) return;
+    onSave({
+      id: session?.id || genId(),
+      type: 'lifting',
+      date,
+      sessionName,
+      exercises: clean
+    });
+  };
+
+  return (
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onCancel()}>
+      <div className="modal-sheet">
+        <div className="modal-handle"/>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 800 }}>Log Lifting</h2>
+          <button className="del-btn" onClick={onCancel}><IconX/></button>
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Date</label>
+            <input type="date" value={date} onChange={e => setDate(e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Session</label>
+            <select value={sessionName} onChange={e => setSessionName(e.target.value)}>
+              <option>Session A</option>
+              <option>Session B</option>
+            </select>
+          </div>
+        </div>
+
+        {exercises.map((ex, ei) => (
+          <div key={ei} className="exercise-block">
+            <div className="exercise-header">
+              <input
+                className="exercise-name-input"
+                placeholder="Exercise name"
+                value={ex.name}
+                onChange={e => updateExercise(ei, 'name', e.target.value)}
+                list="exercise-list"
+              />
+              {exercises.length > 1 && (
+                <button className="del-btn" onClick={() => removeExercise(ei)}><IconTrash/></button>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 4, paddingLeft: 32 }}>
+              <span style={{ flex: 1, fontSize: 11, fontWeight: 600, color: 'var(--slate-400)' }}>LBS</span>
+              <span style={{ flex: 1, fontSize: 11, fontWeight: 600, color: 'var(--slate-400)' }}>REPS</span>
+              <span style={{ width: 56, fontSize: 11, fontWeight: 600, color: 'var(--slate-400)' }}>RPE</span>
+              <span style={{ width: 28 }}/>
+            </div>
+            {ex.sets.map((s, si) => (
+              <div key={si} className="set-row">
+                <span className="set-num">{si + 1}</span>
+                <input type="number" placeholder="0" value={s.weight} onChange={e => updateSet(ei, si, 'weight', e.target.value)} style={{ flex: 1 }}/>
+                <input type="number" placeholder="0" value={s.reps} onChange={e => updateSet(ei, si, 'reps', e.target.value)} style={{ flex: 1 }}/>
+                <input type="number" placeholder="0" min="1" max="10" step="0.5" value={s.rpe} onChange={e => updateSet(ei, si, 'rpe', e.target.value)} style={{ width: 56 }}/>
+                <button className="del-btn" onClick={() => removeSet(ei, si)} style={{ width: 28, height: 28 }}>-</button>
+              </div>
+            ))}
+            <button className="btn btn-sm btn-secondary" style={{ marginTop: 8 }} onClick={() => addSet(ei)}>+ Set</button>
+          </div>
+        ))}
+
+        <button className="btn btn-secondary btn-full" style={{ marginBottom: 16 }} onClick={addExercise}>+ Exercise</button>
+        <button className="btn btn-primary btn-full" onClick={handleSave}>Save Session</button>
+
+        <datalist id="exercise-list">
+          {COMMON_EXERCISES.map(e => <option key={e} value={e}/>)}
+        </datalist>
+      </div>
+    </div>
+  );
+}
+
+// ─── Interval Form ────────────────────────────────────────
+function IntervalForm({ session, onSave, onCancel }) {
+  const [date, setDate] = useState(session?.date || today());
+  const [targetWatts, setTargetWatts] = useState(session?.targetWatts || 300);
+  const [intervals, setIntervals] = useState(session?.intervals || Array.from({length:6}, () => ({ peakHR: '', recoveryTime: '' })));
+  const [difficulty, setDifficulty] = useState(session?.difficulty || 3);
+
+  const updateInterval = (i, field, val) => {
+    const next = [...intervals];
+    next[i] = { ...next[i], [field]: val };
+    setIntervals(next);
+  };
+
+  const handleSave = () => {
+    const clean = intervals.map(iv => ({
+      peakHR: Number(iv.peakHR) || 0,
+      recoveryTime: Number(iv.recoveryTime) || 0
+    }));
+    onSave({
+      id: session?.id || genId(),
+      type: 'intervals',
+      date,
+      targetWatts: Number(targetWatts),
+      intervals: clean,
+      difficulty: Number(difficulty)
+    });
+  };
+
+  return (
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onCancel()}>
+      <div className="modal-sheet">
+        <div className="modal-handle"/>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 800 }}>Log Intervals</h2>
+          <button className="del-btn" onClick={onCancel}><IconX/></button>
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Date</label>
+            <input type="date" value={date} onChange={e => setDate(e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Target Watts</label>
+            <input type="number" value={targetWatts} onChange={e => setTargetWatts(e.target.value)} />
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 8 }}>
+          <div style={{ display: 'flex', gap: 6, marginBottom: 4, paddingLeft: 32 }}>
+            <span style={{ flex: 1, fontSize: 11, fontWeight: 600, color: 'var(--slate-400)' }}>PEAK HR</span>
+            <span style={{ flex: 1, fontSize: 11, fontWeight: 600, color: 'var(--slate-400)' }}>RECOVERY (min)</span>
+          </div>
+          {intervals.map((iv, i) => (
+            <div key={i} className="interval-row">
+              <span className="interval-num">{i + 1}</span>
+              <input type="number" placeholder="bpm" value={iv.peakHR} onChange={e => updateInterval(i, 'peakHR', e.target.value)} />
+              <input type="number" placeholder="min" step="0.1" value={iv.recoveryTime} onChange={e => updateInterval(i, 'recoveryTime', e.target.value)} />
+            </div>
+          ))}
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Difficulty (1-5)</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {[1,2,3,4,5].map(n => (
+              <button key={n} className="btn btn-sm" style={{
+                flex: 1, background: difficulty == n ? 'var(--sky)' : 'var(--slate-100)',
+                color: difficulty == n ? 'white' : 'var(--slate-600)'
+              }} onClick={() => setDifficulty(n)}>{n}</button>
+            ))}
+          </div>
+        </div>
+
+        <button className="btn btn-primary btn-full" style={{ marginTop: 8 }} onClick={handleSave}>Save Session</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Zone 2 Form ──────────────────────────────────────────
+function Zone2Form({ session, onSave, onCancel }) {
+  const [date, setDate] = useState(session?.date || today());
+  const [duration, setDuration] = useState(session?.duration || 40);
+  const [avgWatts, setAvgWatts] = useState(session?.avgWatts || '');
+  const [avgHR, setAvgHR] = useState(session?.avgHR || '');
+  const [hrAt10, setHrAt10] = useState(session?.hrAt10Min || '');
+  const [hrEnd, setHrEnd] = useState(session?.hrAtEnd || '');
+  const [feel, setFeel] = useState(session?.feel || 2);
+
+  const handleSave = () => {
+    onSave({
+      id: session?.id || genId(),
+      type: 'zone2',
+      date,
+      duration: Number(duration),
+      avgWatts: Number(avgWatts),
+      avgHR: Number(avgHR),
+      hrAt10Min: Number(hrAt10),
+      hrAtEnd: Number(hrEnd),
+      feel: Number(feel)
+    });
+  };
+
+  return (
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onCancel()}>
+      <div className="modal-sheet">
+        <div className="modal-handle"/>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 800 }}>Log Zone 2</h2>
+          <button className="del-btn" onClick={onCancel}><IconX/></button>
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Date</label>
+            <input type="date" value={date} onChange={e => setDate(e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Duration (min)</label>
+            <input type="number" value={duration} onChange={e => setDuration(e.target.value)} />
+          </div>
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Avg Watts</label>
+            <input type="number" placeholder="140" value={avgWatts} onChange={e => setAvgWatts(e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Avg HR</label>
+            <input type="number" placeholder="130" value={avgHR} onChange={e => setAvgHR(e.target.value)} />
+          </div>
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">HR @ 10 min</label>
+            <input type="number" placeholder="125" value={hrAt10} onChange={e => setHrAt10(e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">HR @ End</label>
+            <input type="number" placeholder="135" value={hrEnd} onChange={e => setHrEnd(e.target.value)} />
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Feel (1=very easy, 5=hard)</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {[1,2,3,4,5].map(n => (
+              <button key={n} className="btn btn-sm" style={{
+                flex: 1, background: feel == n ? 'var(--green)' : 'var(--slate-100)',
+                color: feel == n ? 'white' : 'var(--slate-600)'
+              }} onClick={() => setFeel(n)}>{n}</button>
+            ))}
+          </div>
+        </div>
+
+        <button className="btn btn-primary btn-full" style={{ marginTop: 8 }} onClick={handleSave}>Save Session</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Session Detail View ──────────────────────────────────
+function SessionDetail({ session, onClose, onDelete }) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  if (!session) return null;
+
+  return (
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal-sheet">
+        <div className="modal-handle"/>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div>
+            <span className={`badge badge-${session.type}`}>
+              {session.type === 'lifting' ? 'Lifting' : session.type === 'intervals' ? 'Intervals' : 'Zone 2'}
+            </span>
+            <div style={{ fontSize: 14, color: 'var(--slate-500)', marginTop: 4 }}>{fmtFull(session.date)}</div>
+          </div>
+          <button className="del-btn" onClick={onClose}><IconX/></button>
+        </div>
+
+        {session.type === 'lifting' && (
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--slate-500)', marginBottom: 12 }}>{session.sessionName}</div>
+            {session.exercises.map((ex, i) => (
+              <div key={i} className="card" style={{ background: 'var(--slate-50)' }}>
+                <div style={{ fontWeight: 700, marginBottom: 8 }}>{ex.name}</div>
+                {ex.sets.map((s, si) => (
+                  <div key={si} style={{ display: 'flex', gap: 16, fontSize: 14, padding: '4px 0' }}>
+                    <span style={{ color: 'var(--slate-400)', width: 20 }}>{si+1}</span>
+                    <span style={{ fontWeight: 600 }}>{s.weight} lbs</span>
+                    <span>{s.reps} reps</span>
+                    {s.rpe > 0 && <span style={{ color: 'var(--slate-500)' }}>RPE {s.rpe}</span>}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {session.type === 'intervals' && (
+          <div>
+            <div className="detail-grid" style={{ marginBottom: 16 }}>
+              <div className="detail-section">
+                <div className="detail-label">Target Watts</div>
+                <div className="detail-value">{session.targetWatts}W</div>
+              </div>
+              <div className="detail-section">
+                <div className="detail-label">Avg Recovery</div>
+                <div className="detail-value">
+                  {(session.intervals.filter(iv => iv.recoveryTime > 0).reduce((a,b) => a + b.recoveryTime, 0) /
+                    Math.max(1, session.intervals.filter(iv => iv.recoveryTime > 0).length)).toFixed(1)} min
+                </div>
+              </div>
+            </div>
+            {session.intervals.map((iv, i) => (
+              <div key={i} className="interval-row" style={{ borderBottom: '1px solid var(--slate-100)', padding: '8px 0' }}>
+                <span className="interval-num">{i+1}</span>
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontWeight: 600 }}>{iv.peakHR || '—'} bpm</span>
+                </div>
+                <div style={{ color: 'var(--slate-500)', fontSize: 13 }}>
+                  {iv.recoveryTime > 0 ? `${iv.recoveryTime} min recovery` : '—'}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {session.type === 'zone2' && (
+          <div className="detail-grid">
+            <div className="detail-section">
+              <div className="detail-label">Duration</div>
+              <div className="detail-value">{session.duration} min</div>
+            </div>
+            <div className="detail-section">
+              <div className="detail-label">Avg Watts</div>
+              <div className="detail-value">{session.avgWatts}W</div>
+            </div>
+            <div className="detail-section">
+              <div className="detail-label">Avg HR</div>
+              <div className="detail-value">{session.avgHR} bpm</div>
+            </div>
+            <div className="detail-section">
+              <div className="detail-label">Cardiac Drift</div>
+              <div className="detail-value">
+                {session.hrAt10Min && session.hrAtEnd
+                  ? `${session.hrAtEnd - session.hrAt10Min > 0 ? '+' : ''}${session.hrAtEnd - session.hrAt10Min} bpm`
+                  : '—'}
+              </div>
+            </div>
+            <div className="detail-section">
+              <div className="detail-label">HR @ 10 min</div>
+              <div className="detail-value">{session.hrAt10Min || '—'}</div>
+            </div>
+            <div className="detail-section">
+              <div className="detail-label">HR @ End</div>
+              <div className="detail-value">{session.hrAtEnd || '—'}</div>
+            </div>
+          </div>
+        )}
+
+        <div style={{ marginTop: 20 }}>
+          {!confirmDelete ? (
+            <button className="btn btn-sm" style={{ color: 'var(--red)', background: 'var(--red-light)' }} onClick={() => setConfirmDelete(true)}>Delete Session</button>
+          ) : (
+            <div className="confirm-bar">
+              <button className="btn btn-sm btn-danger" onClick={() => onDelete(session.id)}>Confirm Delete</button>
+              <button className="btn btn-sm btn-secondary" onClick={() => setConfirmDelete(false)}>Cancel</button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Log Screen ───────────────────────────────────────────
+function LogScreen({ onOpenForm }) {
+  return (
+    <div>
+      <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Log a Session</h2>
+      <p style={{ fontSize: 14, color: 'var(--slate-500)', marginBottom: 16 }}>What did you do today?</p>
+
+      <button className="log-card lifting" onClick={() => onOpenForm('lifting')}>
+        <div className="log-card-icon">&#x1f3cb;</div>
+        <div className="log-card-text">
+          <div className="log-card-title">Resistance Training</div>
+          <div className="log-card-sub">Exercises, sets, reps, weight, RPE</div>
+        </div>
+      </button>
+
+      <button className="log-card intervals" onClick={() => onOpenForm('intervals')}>
+        <div className="log-card-icon">&#x26a1;</div>
+        <div className="log-card-text">
+          <div className="log-card-title">Interval Session</div>
+          <div className="log-card-sub">6x2min — watts, peak HR, recovery times</div>
+        </div>
+      </button>
+
+      <button className="log-card zone2" onClick={() => onOpenForm('zone2')}>
+        <div className="log-card-icon">&#x1f49a;</div>
+        <div className="log-card-text">
+          <div className="log-card-title">Zone 2 Ride</div>
+          <div className="log-card-sub">Duration, watts, HR, cardiac drift</div>
+        </div>
+      </button>
+    </div>
+  );
+}
+
+// ─── Calendar Screen ──────────────────────────────────────
+function CalendarScreen({ sessions, onSelectSession }) {
+  const [weekStart, setWeekStart] = useState(() => getMonday(today()));
+
+  const weekDays = useMemo(() => {
+    return Array.from({length: 7}, (_, i) => addDays(weekStart, i));
+  }, [weekStart]);
+
+  const sessionsThisWeek = useMemo(() => {
+    return sessions.filter(s => s.date >= weekDays[0] && s.date <= weekDays[6]);
+  }, [sessions, weekDays]);
+
+  const getSessionsForDay = (date) => sessions.filter(s => s.date === date);
+
+  const liftCount = sessionsThisWeek.filter(s => s.type === 'lifting').length;
+  const intervalCount = sessionsThisWeek.filter(s => s.type === 'intervals').length;
+  const z2Count = sessionsThisWeek.filter(s => s.type === 'zone2').length;
+
+  const weekLabel = (() => {
+    const s = new Date(weekDays[0] + 'T12:00:00');
+    const e = new Date(weekDays[6] + 'T12:00:00');
+    return `${s.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${e.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+  })();
+
+  return (
+    <div>
+      <div className="cal-nav">
+        <button onClick={() => setWeekStart(addDays(weekStart, -7))}><IconChevL/></button>
+        <span className="cal-nav-title">{weekLabel}</span>
+        <button onClick={() => setWeekStart(addDays(weekStart, 7))}><IconChevR/></button>
+      </div>
+
+      <div className="week-summary">
+        <div className={`week-summary-item ${liftCount >= 2 ? 'done' : ''}`}>
+          <div className="count" style={{ color: 'var(--purple)' }}>{liftCount}/2</div>
+          <div className="label">Lifting</div>
+        </div>
+        <div className={`week-summary-item ${intervalCount >= 1 ? 'done' : ''}`}>
+          <div className="count" style={{ color: 'var(--red)' }}>{intervalCount}/1</div>
+          <div className="label">Intervals</div>
+        </div>
+        <div className={`week-summary-item ${z2Count >= 3 ? 'done' : ''}`}>
+          <div className="count" style={{ color: 'var(--green)' }}>{z2Count}/3</div>
+          <div className="label">Zone 2</div>
+        </div>
+      </div>
+
+      <div className="cal-week">
+        {dayNames.map(d => <div key={d} className="cal-day-label">{d}</div>)}
+      </div>
+      <div className="cal-week">
+        {weekDays.map((date, i) => {
+          const daySessions = getSessionsForDay(date);
+          const isToday = date === today();
+          const planned = PLAN[i];
+          return (
+            <div key={date} className={`cal-day ${isToday ? 'today' : ''}`}
+                 onClick={() => { if (daySessions.length > 0) onSelectSession(daySessions[0]); }}>
+              <div className="cal-date">{new Date(date + 'T12:00:00').getDate()}</div>
+              <div style={{ fontSize: 9, color: 'var(--slate-400)', fontWeight: 600, lineHeight: 1.1, marginBottom: 2 }}>
+                {PLAN_LABELS[i]}
+              </div>
+              {/* Show planned dot if no session of that type */}
+              {planned !== 'rest' && !daySessions.some(s => s.type === planned) && (
+                <div className={`cal-dot planned ${planned}`}/>
+              )}
+              {/* Show completed dots */}
+              <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap', justifyContent: 'center' }}>
+                {daySessions.map(s => (
+                  <div key={s.id} className={`cal-dot completed ${s.type}`}/>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Day's sessions list below calendar */}
+      {sessionsThisWeek.length > 0 && (
+        <div className="card" style={{ marginTop: 12 }}>
+          <div className="card-title" style={{ marginBottom: 8 }}>This Week's Sessions</div>
+          {sessionsThisWeek.sort((a,b) => a.date.localeCompare(b.date)).map(s => (
+            <div key={s.id} className="history-item" onClick={() => onSelectSession(s)}>
+              <div className={`history-icon ${s.type}`}>
+                {s.type === 'lifting' ? '🏋' : s.type === 'intervals' ? '⚡' : '💚'}
+              </div>
+              <div className="history-info">
+                <div className="history-title">
+                  {s.type === 'lifting' ? `${s.sessionName} — ${s.exercises.length} exercise${s.exercises.length > 1 ? 's' : ''}` :
+                   s.type === 'intervals' ? `Intervals @ ${s.targetWatts}W` :
+                   `Zone 2 — ${s.duration}min @ ${s.avgWatts}W`}
+                </div>
+              </div>
+              <div className="history-date">{fmt(s.date)}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Chart wrapper ────────────────────────────────────────
+function ChartCanvas({ config }) {
+  const canvasRef = useRef(null);
+  const chartRef = useRef(null);
+
+  useEffect(() => {
+    if (chartRef.current) chartRef.current.destroy();
+    if (!canvasRef.current || !config) return;
+    chartRef.current = new Chart(canvasRef.current, config);
+    return () => { if (chartRef.current) chartRef.current.destroy(); };
+  }, [config]);
+
+  return (
+    <div className="chart-container">
+      <canvas ref={canvasRef}/>
+    </div>
+  );
+}
+
+// ─── Trends Screen ────────────────────────────────────────
+function TrendsScreen({ sessions }) {
+  const [activeChart, setActiveChart] = useState('recovery');
+
+  const intervalSessions = useMemo(() =>
+    sessions.filter(s => s.type === 'intervals').sort((a,b) => a.date.localeCompare(b.date)),
+  [sessions]);
+
+  const z2Sessions = useMemo(() =>
+    sessions.filter(s => s.type === 'zone2').sort((a,b) => a.date.localeCompare(b.date)),
+  [sessions]);
+
+  const liftingSessions = useMemo(() =>
+    sessions.filter(s => s.type === 'lifting').sort((a,b) => a.date.localeCompare(b.date)),
+  [sessions]);
+
+  // Get unique exercise names from lifting sessions
+  const exerciseNames = useMemo(() => {
+    const names = new Set();
+    liftingSessions.forEach(s => s.exercises.forEach(ex => names.add(ex.name)));
+    return Array.from(names).sort();
+  }, [liftingSessions]);
+
+  const [selectedExercise, setSelectedExercise] = useState('');
+
+  useEffect(() => {
+    if (exerciseNames.length > 0 && !exerciseNames.includes(selectedExercise)) {
+      setSelectedExercise(exerciseNames[0]);
+    }
+  }, [exerciseNames]);
+
+  // ── Recovery time chart config
+  const recoveryConfig = useMemo(() => {
+    if (intervalSessions.length === 0) return null;
+    const labels = intervalSessions.map(s => fmt(s.date));
+    const avgRecovery = intervalSessions.map(s => {
+      const valid = s.intervals.filter(iv => iv.recoveryTime > 0);
+      return valid.length > 0 ? +(valid.reduce((a,b) => a + b.recoveryTime, 0) / valid.length).toFixed(2) : null;
+    });
+    return {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Avg Recovery (min)',
+          data: avgRecovery,
+          borderColor: '#ef4444',
+          backgroundColor: 'rgba(239,68,68,0.1)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 5,
+          pointBackgroundColor: '#ef4444',
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => `${ctx.parsed.y} min` } } },
+        scales: {
+          y: { beginAtZero: true, title: { display: true, text: 'Minutes' }, grid: { color: '#f1f5f9' } },
+          x: { grid: { display: false } }
+        }
+      }
+    };
+  }, [intervalSessions]);
+
+  // ── Z2 efficiency chart
+  const z2Config = useMemo(() => {
+    if (z2Sessions.length === 0) return null;
+    const labels = z2Sessions.map(s => fmt(s.date));
+    return {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Watts',
+            data: z2Sessions.map(s => s.avgWatts),
+            borderColor: '#22c55e',
+            backgroundColor: 'rgba(34,197,94,0.1)',
+            fill: true, tension: 0.3, pointRadius: 5, pointBackgroundColor: '#22c55e',
+            yAxisID: 'y'
+          },
+          {
+            label: 'Avg HR',
+            data: z2Sessions.map(s => s.avgHR),
+            borderColor: '#f59e0b',
+            borderDash: [5,3],
+            tension: 0.3, pointRadius: 4, pointBackgroundColor: '#f59e0b',
+            yAxisID: 'y1'
+          }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'top', labels: { boxWidth: 12 } } },
+        scales: {
+          y: { position: 'left', title: { display: true, text: 'Watts' }, grid: { color: '#f1f5f9' } },
+          y1: { position: 'right', title: { display: true, text: 'HR (bpm)' }, grid: { display: false },
+                min: 100, max: 160 },
+          x: { grid: { display: false } }
+        }
+      }
+    };
+  }, [z2Sessions]);
+
+  // ── Lift progression chart
+  const liftConfig = useMemo(() => {
+    if (!selectedExercise || liftingSessions.length === 0) return null;
+    const relevant = liftingSessions.filter(s => s.exercises.some(ex => ex.name === selectedExercise));
+    if (relevant.length === 0) return null;
+    const labels = relevant.map(s => fmt(s.date));
+    const bestSet = relevant.map(s => {
+      const ex = s.exercises.find(ex => ex.name === selectedExercise);
+      if (!ex) return 0;
+      return Math.max(...ex.sets.map(set => set.weight * set.reps));
+    });
+    const topWeight = relevant.map(s => {
+      const ex = s.exercises.find(ex => ex.name === selectedExercise);
+      if (!ex) return 0;
+      return Math.max(...ex.sets.map(set => set.weight));
+    });
+    return {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Best Set Volume (lbs × reps)',
+            data: bestSet,
+            backgroundColor: 'rgba(139,92,246,0.6)',
+            borderColor: '#8b5cf6',
+            borderWidth: 1,
+            borderRadius: 4,
+            yAxisID: 'y'
+          },
+          {
+            label: 'Top Weight (lbs)',
+            data: topWeight,
+            type: 'line',
+            borderColor: '#8b5cf6',
+            tension: 0.3, pointRadius: 4, pointBackgroundColor: '#8b5cf6',
+            yAxisID: 'y1'
+          }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'top', labels: { boxWidth: 12 } } },
+        scales: {
+          y: { position: 'left', title: { display: true, text: 'Volume' }, grid: { color: '#f1f5f9' } },
+          y1: { position: 'right', title: { display: true, text: 'Weight (lbs)' }, grid: { display: false } },
+          x: { grid: { display: false } }
+        }
+      }
+    };
+  }, [liftingSessions, selectedExercise]);
+
+  // ── Interval wattage progression
+  const wattageConfig = useMemo(() => {
+    if (intervalSessions.length === 0) return null;
+    return {
+      type: 'line',
+      data: {
+        labels: intervalSessions.map(s => fmt(s.date)),
+        datasets: [{
+          label: 'Target Watts',
+          data: intervalSessions.map(s => s.targetWatts),
+          borderColor: '#ef4444',
+          backgroundColor: 'rgba(239,68,68,0.1)',
+          fill: true, tension: 0.3, stepped: 'before',
+          pointRadius: 5, pointBackgroundColor: '#ef4444'
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { title: { display: true, text: 'Watts' }, grid: { color: '#f1f5f9' } },
+          x: { grid: { display: false } }
+        }
+      }
+    };
+  }, [intervalSessions]);
+
+  const charts = [
+    { id: 'recovery', label: 'Recovery Time' },
+    { id: 'wattage', label: 'Interval Watts' },
+    { id: 'z2', label: 'Z2 Efficiency' },
+    { id: 'lift', label: 'Lift Progress' },
+  ];
+
+  return (
+    <div>
+      <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 12 }}>Trends</h2>
+
+      <div className="trend-tabs">
+        {charts.map(c => (
+          <button key={c.id} className={`trend-tab ${activeChart === c.id ? 'active' : ''}`}
+                  onClick={() => setActiveChart(c.id)}>{c.label}</button>
+        ))}
+      </div>
+
+      {activeChart === 'recovery' && (
+        <div className="card">
+          <div className="card-title" style={{ marginBottom: 4 }}>Interval Recovery to 120bpm</div>
+          <div style={{ fontSize: 12, color: 'var(--slate-500)', marginBottom: 8 }}>Lower is better — shows cardiovascular adaptation</div>
+          {intervalSessions.length > 0 ? <ChartCanvas config={recoveryConfig} /> :
+            <div className="empty"><div className="empty-text">Log interval sessions to see recovery trends</div></div>}
+        </div>
+      )}
+
+      {activeChart === 'wattage' && (
+        <div className="card">
+          <div className="card-title" style={{ marginBottom: 4 }}>Interval Target Watts</div>
+          <div style={{ fontSize: 12, color: 'var(--slate-500)', marginBottom: 8 }}>Watts needed to hit target HR zone (165-175 bpm)</div>
+          {intervalSessions.length > 0 ? <ChartCanvas config={wattageConfig} /> :
+            <div className="empty"><div className="empty-text">Log interval sessions to see wattage progression</div></div>}
+        </div>
+      )}
+
+      {activeChart === 'z2' && (
+        <div className="card">
+          <div className="card-title" style={{ marginBottom: 4 }}>Zone 2 Efficiency</div>
+          <div style={{ fontSize: 12, color: 'var(--slate-500)', marginBottom: 8 }}>More watts at same HR = better aerobic fitness</div>
+          {z2Sessions.length > 0 ? <ChartCanvas config={z2Config} /> :
+            <div className="empty"><div className="empty-text">Log Zone 2 sessions to see efficiency trends</div></div>}
+        </div>
+      )}
+
+      {activeChart === 'lift' && (
+        <div className="card">
+          <div className="card-title" style={{ marginBottom: 4 }}>Lift Progression</div>
+          {exerciseNames.length > 0 ? (
+            <>
+              <select value={selectedExercise} onChange={e => setSelectedExercise(e.target.value)}
+                      style={{ marginBottom: 8, fontSize: 14 }}>
+                {exerciseNames.map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+              <ChartCanvas config={liftConfig} />
+            </>
+          ) : (
+            <div className="empty"><div className="empty-text">Log lifting sessions to see progression</div></div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── History Screen ───────────────────────────────────────
+function HistoryScreen({ sessions, onSelectSession }) {
+  const sorted = useMemo(() => [...sessions].sort((a,b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id)), [sessions]);
+
+  const summarize = (s) => {
+    if (s.type === 'lifting') {
+      const totalSets = s.exercises.reduce((a, ex) => a + ex.sets.length, 0);
+      return `${s.sessionName} — ${s.exercises.length} exercises, ${totalSets} sets`;
+    }
+    if (s.type === 'intervals') {
+      const valid = s.intervals.filter(iv => iv.recoveryTime > 0);
+      const avg = valid.length > 0 ? (valid.reduce((a,b) => a + b.recoveryTime, 0) / valid.length).toFixed(1) : '—';
+      return `${s.targetWatts}W — avg recovery ${avg} min`;
+    }
+    if (s.type === 'zone2') {
+      return `${s.duration}min @ ${s.avgWatts}W, ${s.avgHR} bpm`;
+    }
+    return '';
+  };
+
+  if (sorted.length === 0) {
+    return (
+      <div>
+        <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 16 }}>History</h2>
+        <div className="empty">
+          <div className="empty-icon">📋</div>
+          <div className="empty-text">No sessions logged yet. Hit the Log tab to get started!</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>History</h2>
+      <p style={{ fontSize: 13, color: 'var(--slate-500)', marginBottom: 12 }}>{sorted.length} sessions logged</p>
+      <div className="card">
+        {sorted.map(s => (
+          <div key={s.id} className="history-item" onClick={() => onSelectSession(s)}>
+            <div className={`history-icon ${s.type}`}>
+              {s.type === 'lifting' ? '🏋' : s.type === 'intervals' ? '⚡' : '💚'}
+            </div>
+            <div className="history-info">
+              <div className="history-title">
+                {s.type === 'lifting' ? 'Lifting' : s.type === 'intervals' ? 'Intervals' : 'Zone 2'}
+              </div>
+              <div className="history-sub">{summarize(s)}</div>
+            </div>
+            <div className="history-date">{fmt(s.date)}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main App ─────────────────────────────────────────────
+function App() {
+  const [sessions, setSessions] = useState(loadSessions);
+  const [tab, setTab] = useState('log');
+  const [formType, setFormType] = useState(null); // 'lifting' | 'intervals' | 'zone2'
+  const [editSession, setEditSession] = useState(null);
+  const [viewSession, setViewSession] = useState(null);
+  const [toast, setToast] = useState('');
+
+  useEffect(() => { saveSessions(sessions); }, [sessions]);
+
+  const showToast = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(''), 2000);
+  };
+
+  const handleSave = (session) => {
+    setSessions(prev => {
+      const idx = prev.findIndex(s => s.id === session.id);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = session;
+        return next;
+      }
+      return [...prev, session];
+    });
+    setFormType(null);
+    setEditSession(null);
+    showToast('Session saved!');
+  };
+
+  const handleDelete = (id) => {
+    setSessions(prev => prev.filter(s => s.id !== id));
+    setViewSession(null);
+    showToast('Session deleted');
+  };
+
+  const openForm = (type) => {
+    setFormType(type);
+    setEditSession(null);
+  };
+
+  const openDetail = (session) => {
+    setViewSession(session);
+  };
+
+  return (
+    <>
+      <div className="app-header">Shaun's Training Log</div>
+      <div className="app-content">
+        {tab === 'log' && <LogScreen onOpenForm={openForm} />}
+        {tab === 'calendar' && <CalendarScreen sessions={sessions} onSelectSession={openDetail} />}
+        {tab === 'trends' && <TrendsScreen sessions={sessions} />}
+        {tab === 'history' && <HistoryScreen sessions={sessions} onSelectSession={openDetail} />}
+      </div>
+      <TabBar tab={tab} setTab={setTab} />
+
+      {formType === 'lifting' && <LiftingForm session={editSession} onSave={handleSave} onCancel={() => setFormType(null)} />}
+      {formType === 'intervals' && <IntervalForm session={editSession} onSave={handleSave} onCancel={() => setFormType(null)} />}
+      {formType === 'zone2' && <Zone2Form session={editSession} onSave={handleSave} onCancel={() => setFormType(null)} />}
+      {viewSession && <SessionDetail session={viewSession} onClose={() => setViewSession(null)} onDelete={handleDelete} />}
+
+      <Toast message={toast} />
+    </>
+  );
+}
+
+// ─── Seed historical data on first launch ─────────────────
+(function seedData() {
+  if (localStorage.getItem('trainlog_seeded')) return;
+
+  const existing = loadSessions();
+  if (existing.length > 0) { localStorage.setItem('trainlog_seeded', '1'); return; }
+
+  // Interval session data from CSV logs
+  const intervalRaw = [
+    { date:'2026-01-30', session:1, watts:220, intervals:[
+      {w:170,hr:155,rec:0},{w:190,hr:158,rec:3},{w:220,hr:165,rec:3.5},{w:220,hr:163,rec:4},{w:220,hr:166,rec:6},{w:220,hr:164,rec:0}
+    ], diff: 3 },
+    { date:'2026-02-07', session:2, watts:280, intervals:[
+      {w:220,hr:152,rec:2},{w:240,hr:160,rec:2},{w:280,hr:165,rec:3.5},{w:280,hr:166,rec:2.75},{w:280,hr:168,rec:3.25},{w:280,hr:166,rec:0}
+    ], diff: 3 },
+    { date:'2026-02-11', session:3, watts:280, intervals:[
+      {w:280,hr:160,rec:2.38},{w:280,hr:167,rec:2.1},{w:280,hr:167,rec:2.27},{w:280,hr:165,rec:4.83},{w:280,hr:165,rec:3.75},{w:280,hr:165,rec:0}
+    ], diff: 3 },
+    { date:'2026-02-14', session:4, watts:280, intervals:[
+      {w:280,hr:150,rec:2.53},{w:280,hr:163,rec:7.63},{w:280,hr:158,rec:8},{w:280,hr:163,rec:6.42},{w:280,hr:166,rec:7.33},{w:280,hr:163,rec:0}
+    ], diff: 4 },
+    { date:'2026-02-18', session:5, watts:280, intervals:[
+      {w:280,hr:148,rec:1.5},{w:280,hr:158,rec:1.83},{w:280,hr:160,rec:2.17},{w:300,hr:168,rec:2.17},{w:300,hr:150,rec:2.5},{w:300,hr:165,rec:2.67}
+    ], diff: 3 },
+    { date:'2026-02-21', session:6, watts:300, intervals:[
+      {w:300,hr:167,rec:2.08},{w:300,hr:172,rec:3},{w:300,hr:172,rec:2.83},{w:300,hr:172,rec:3.08},{w:300,hr:173,rec:4.92},{w:300,hr:173,rec:0}
+    ], diff: 4 },
+    { date:'2026-02-25', session:7, watts:300, intervals:[
+      {w:300,hr:170,rec:0},{w:300,hr:171,rec:2.75},{w:300,hr:172,rec:3.58},{w:300,hr:172,rec:3.33},{w:300,hr:175,rec:5.75},{w:300,hr:173,rec:9.17}
+    ], diff: 4 },
+  ];
+
+  const intervalSessions = intervalRaw.map(r => ({
+    id: 'seed_int_' + r.session,
+    type: 'intervals',
+    date: r.date,
+    targetWatts: r.watts,
+    intervals: r.intervals.map(iv => ({ peakHR: iv.hr, recoveryTime: iv.rec })),
+    difficulty: r.diff
+  }));
+
+  // Zone 2 session data from CSV logs
+  const z2Sessions = [
+    { id: 'seed_z2_1', type: 'zone2', date: '2026-01-30', duration: 40, avgWatts: 130, avgHR: 135, hrAt10Min: 0, hrAtEnd: 0, feel: 2 },
+    { id: 'seed_z2_2', type: 'zone2', date: '2026-01-31', duration: 40, avgWatts: 100, avgHR: 135, hrAt10Min: 0, hrAtEnd: 0, feel: 3 },
+    { id: 'seed_z2_3', type: 'zone2', date: '2026-02-02', duration: 40, avgWatts: 130, avgHR: 140, hrAt10Min: 0, hrAtEnd: 0, feel: 3 },
+  ];
+
+  // Lifting session seed data (from reference doc)
+  const liftSessions = [
+    {
+      id: 'seed_lift_1', type: 'lifting', date: '2026-01-20', sessionName: 'Session A',
+      exercises: [
+        { name: 'Bench Press', sets: [{weight:135,reps:15,rpe:6},{weight:135,reps:15,rpe:7},{weight:135,reps:11,rpe:8}] },
+        { name: 'Lat Pulldowns', sets: [{weight:120,reps:14,rpe:8},{weight:120,reps:14,rpe:9}] }
+      ]
+    },
+    {
+      id: 'seed_lift_2', type: 'lifting', date: '2026-02-10', sessionName: 'Session A',
+      exercises: [
+        { name: 'Bench Press', sets: [{weight:185,reps:10,rpe:9}] },
+        { name: 'Lat Pulldowns', sets: [{weight:120,reps:14,rpe:8},{weight:120,reps:14,rpe:9}] }
+      ]
+    }
+  ];
+
+  const allSeeds = [...intervalSessions, ...z2Sessions, ...liftSessions];
+  saveSessions(allSeeds);
+  localStorage.setItem('trainlog_seeded', '1');
+})();
+
+// ─── Mount ────────────────────────────────────────────────
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+
+// ─── Service Worker Registration ──────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
